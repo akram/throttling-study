@@ -197,7 +197,7 @@ This policy allows only a maximum number of containers to become `starting` per 
 ##### Pros
 
 * Simple
-* Ensures that all containers startup will be _triggered_ within a predictible time, giving a chance to all containers to become ready.
+* Doesn’t require a time-out mechanism
 
 ##### Cons
 
@@ -214,11 +214,11 @@ This policy allows a container to become `starting` only if:
 
 ##### Pros
 
-* Really takes into account the available resource of the machine and its usage to optimize utilization without overloading it
+* Really takes into account the available resources of the machine to optimize the startup time without overloading it
 
 ##### Cons
 
-* Implementation is more complex
+* Implementation more complex
 * If the machine is loaded by things other than `starting` containers (like `ready` containers or even processes running on the machine that are not docker containers), it will prevent containers from starting.
 
 #### Composite policy
@@ -251,8 +251,8 @@ We could have a configuration file attached to minions.
   "kind": "MinionConfig",
   "apiVersion": "v1beta1",
   "throttling": {
-    "maxStartingContainers": "3 NbCores",
-    "maxLoadAvg": "1.5 NbCores",
+    "maxStartingContainersPerCore": "3",
+    "maxLoadAverageMulitplier": "1.5",
     "maxCPU": "80%",
     "minRate": "0.1",
     "maxRate": "10"
@@ -264,9 +264,10 @@ We could have a configuration file attached to minions.
 kubecfg -c m1_config.json update minions/192.168.10.1
 ```
 
-* **maxStartingContainers**: Can be a absolute value or a factor multiplied by the number of cores of the machine
-* **maxLoadAvg**: Can be a absolute value or a factor multiplied by the number of cores of the machine
-* **minRate**: Whatever the other settings, we’ll start at least one container every 10s
+* **maxStartingContainers**: The maximum number of containers that could be in the starting starting state on the machine
+* **maxStartingContainersPerCore**: The maximum number of containers per core that could be in the starting starting state on the machine. 
+* **maxLoadAverageMultiplier**: Can be a factor multiplied by the number of cores of the machine
+* **minRate**: Whatever the other settings, we’ll start at least one container every 10s (i.e: 0.1 container per second)
 * **maxRate**: Whatever the other settings, we’ll start at most 10 containers per second
 
 ## Dependency management proposal
@@ -363,7 +364,7 @@ When a container X reaches the `blocked` state, the state of all its dependencie
 
 Then, when a container X passes the `starting` to `ready` transition, for each container Yi in the `blocked` state that depends on X, we check the state of all the dependencies of Yi. If all of them are `ready`, then the Yi container becomes `starting`.
 
-In the example above, when the `fe` container becomes `ready`, the state of `cs` is checked. It it’s `ready`, then the state of `example` moves from `blocking` to `starting`.
+In the example above, when the `fe` container becomes `ready`, the state of `cs` is checked. It it’s `ready`, then the state of `example` moves from `blocked` to `starting`.
 
 ### Cycle detection
 
